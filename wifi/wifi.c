@@ -76,6 +76,12 @@ static char iface[PROPERTY_VALUE_MAX];
 #ifndef WIFI_AP_FIRMWARE_LOADER
 #define WIFI_AP_FIRMWARE_LOADER         "wlan_ap_loader"
 #endif
+#ifndef WIFI_PRE_LOAD_RFKILL
+#define WIFI_PRE_LOAD_RFKILL            0
+#endif
+#ifndef WIFI_POST_UNLOAD_RFKILL
+#define WIFI_POST_UNLOAD_RFKILL         0
+#endif
 #define WIFI_TEST_INTERFACE             "sta"
 
 #define WIFI_DRIVER_LOADER_DELAY	1000000
@@ -231,6 +237,12 @@ static int insmod(const char *filename, const char *args)
         return set_wifi_power(1);
     }
 
+    if (WIFI_PRE_LOAD_RFKILL) {
+        if (ret = set_wifi_power(1)) {
+            return ret;
+        }
+    }
+
     module = load_file(filename, &size);
     if (!module)
         return -1;
@@ -260,9 +272,16 @@ static int rmmod(const char *modname)
             break;
     }
 
-    if (ret != 0)
+    if (ret != 0) {
         LOGD("Unable to unload driver module \"%s\": %s\n",
              modname, strerror(errno));
+        return ret;
+    }
+
+    if (WIFI_POST_UNLOAD_RFKILL) {
+        ret = set_wifi_power(0);
+    }    
+
     return ret;
 }
 
